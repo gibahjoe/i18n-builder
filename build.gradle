@@ -1,0 +1,24 @@
+plugins {
+    id 'java'
+}
+
+group 'org.devappliance'
+version '1.0'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+def junitVersion = '5.3.1'
+dependencies {
+//    testCompile group: 'junit', name: 'junit', version: junitVersion
+    testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
+    // https://mvnrepository.com/artifact/fr.inria.gforge.spoon/spoon-core
+    compile group: 'fr.inria.gforge.spoon', name: 'spoon-core', version: '8.1.0'
+}
+test {
+    useJUnitPlatform()
+}
