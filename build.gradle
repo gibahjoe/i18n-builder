@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'jacoco'
 }
 
 group 'org.devappliance'
@@ -9,16 +10,33 @@ sourceCompatibility = 1.8
 
 repositories {
     mavenCentral()
+    maven { url 'https://jitpack.io' }
 }
 
-def junitVersion = '5.3.1'
+def junitVersion = '5.6.1'
 dependencies {
-//    testCompile group: 'junit', name: 'junit', version: junitVersion
     testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
+    // https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-params
+    testCompile group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: junitVersion
+
     // https://mvnrepository.com/artifact/fr.inria.gforge.spoon/spoon-core
-    compile group: 'fr.inria.gforge.spoon', name: 'spoon-core', version: '8.1.0'
+    // https://mvnrepository.com/artifact/fr.inria.gforge.spoon/spoon-core
+    compile group: 'fr.inria.gforge.spoon', name: 'spoon-core', version: '8.2.0-beta-2'
+    implementation 'com.github.gibahjoe:i18n-extractor-annotations:1.0.0'
+    // https://mvnrepository.com/artifact/javax.validation/validation-api
+    compile group: 'javax.validation', name: 'validation-api', version: '2.0.1.Final'
+    // https://mvnrepository.com/artifact/com.squareup/javapoet
+    compile group: 'com.squareup', name: 'javapoet', version: '1.12.1'
 }
 test {
     useJUnitPlatform()
 }
+jacocoTestReport {
+    reports {
+        xml.enabled = true
+        html.enabled = true
+    }
+}
+check.dependsOn jacocoTestReport
+test.finalizedBy jacocoTestReport
