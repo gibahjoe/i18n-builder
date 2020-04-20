@@ -141,22 +141,24 @@ public class Extractor {
 
         private String sourceOutputDirectory = "build/generated/sources/i18n/java";
 
-        private List<String> keyHolderFieldNameCharacterBlacklist = Arrays.asList("/", "$", " ", "#", "-", "=", "%", "{", "}");
-        private List<String> blacklistKeyCharacters = Arrays.asList("/", " ");
-        private List<String> excludeAnnotationLiterals = new ArrayList<>();
+        //        private List<String> keyHolderFieldNameCharacterBlacklist = Arrays.asList("/", "$", " ", "#", "-", "=", "%", "{", "}");
+//        private List<String> blacklistKeyCharacters = Arrays.asList("/", " ");
+        private List<String> excludeTypeLiterals = new ArrayList<>();
+        private List<String> excludePackages = new ArrayList<>();
         private ExtractionMode mode = ExtractionMode.ALL;
         private boolean rewriteEntireClass = true;
 
         public Config() {
-            excludeAnnotationLiterals.add("org.springframework.web.bind.annotation.GetMapping");
-            excludeAnnotationLiterals.add("org.springframework.web.bind.annotation.DeleteMapping");
-            excludeAnnotationLiterals.add("org.springframework.web.bind.annotation.PostMapping");
-            excludeAnnotationLiterals.add("org.springframework.web.bind.annotation.PutMapping");
-            excludeAnnotationLiterals.add("org.springframework.web.bind.annotation.PatchMapping");
-            excludeAnnotationLiterals.add("org.springframework.web.bind.annotation.RequestMapping");
-            excludeAnnotationLiterals.add("org.springframework.web.bind.annotation.PathVariable");
-            excludeAnnotationLiterals.add("org.springframework.web.bind.annotation.RequestParam");
-            excludeAnnotationLiterals.add("org.springframework.web.bind.annotation.RequestPart");
+            excludeTypeLiterals.add("org.springframework.web.bind.annotation.*");
+        }
+
+        public List<String> getExcludePackages() {
+            return excludePackages;
+        }
+
+        public Config setExcludePackages(List<String> excludePackages) {
+            this.excludePackages = excludePackages;
+            return this;
         }
 
         public boolean isRewriteEntireClass() {
@@ -177,12 +179,17 @@ public class Extractor {
             return this;
         }
 
-        public List<String> getExcludeAnnotationLiterals() {
-            return excludeAnnotationLiterals;
+        public List<String> getExcludeTypeLiterals() {
+            return excludeTypeLiterals;
         }
 
-        public Config setExcludeAnnotationLiterals(List<String> excludeAnnotationLiterals) {
-            this.excludeAnnotationLiterals = excludeAnnotationLiterals;
+        /***
+         * Exclude string literals that appear in annotations
+         * @param excludeTypeLiterals List fully qualified name of annotations to exclude from extraction
+         * @return the builder
+         */
+        public Config setExcludeTypeLiterals(List<String> excludeTypeLiterals) {
+            this.excludeTypeLiterals = excludeTypeLiterals;
             return this;
         }
 
@@ -195,27 +202,27 @@ public class Extractor {
             return this;
         }
 
-        public List<String> getKeyHolderFieldNameCharacterBlacklist() {
-            return keyHolderFieldNameCharacterBlacklist;
-        }
-
-        public Config setKeyHolderFieldNameCharacterBlacklist(List<String> keyHolderFieldNameCharacterBlacklist) {
-            this.keyHolderFieldNameCharacterBlacklist = keyHolderFieldNameCharacterBlacklist;
-            return this;
-        }
+//        public List<String> getKeyHolderFieldNameCharacterBlacklist() {
+//            return keyHolderFieldNameCharacterBlacklist;
+//        }
+//
+//        public Config setKeyHolderFieldNameCharacterBlacklist(List<String> keyHolderFieldNameCharacterBlacklist) {
+//            this.keyHolderFieldNameCharacterBlacklist = keyHolderFieldNameCharacterBlacklist;
+//            return this;
+//        }
 
         public Set<String> getInputResources() {
             return inputResources;
         }
 
-        public List<String> getBlacklistKeyCharacters() {
-            return blacklistKeyCharacters;
-        }
-
-        public Config setBlacklistKeyCharacters(List<String> blacklistKeyCharacters) {
-            this.blacklistKeyCharacters = blacklistKeyCharacters;
-            return this;
-        }
+//        public List<String> getBlacklistKeyCharacters() {
+//            return blacklistKeyCharacters;
+//        }
+//
+//        public Config setBlacklistKeyCharacters(List<String> blacklistKeyCharacters) {
+//            this.blacklistKeyCharacters = blacklistKeyCharacters;
+//            return this;
+//        }
 
         public void addInputFolders(String inputFolder) {
             this.inputResources.add(inputFolder);

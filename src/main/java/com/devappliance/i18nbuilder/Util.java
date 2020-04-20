@@ -3,10 +3,7 @@ package com.devappliance.i18nbuilder;
 import com.devappliance.i18n.annotation.DoNotExtract;
 import org.apache.commons.lang3.StringUtils;
 import spoon.reflect.code.*;
-import spoon.reflect.declaration.CtAnnotation;
-import spoon.reflect.declaration.CtField;
-import spoon.reflect.declaration.CtType;
-import spoon.reflect.declaration.ModifierKind;
+import spoon.reflect.declaration.*;
 import spoon.reflect.factory.Factory;
 import spoon.reflect.factory.TypeFactory;
 import spoon.reflect.path.CtRole;
@@ -26,7 +23,9 @@ import static com.devappliance.i18nbuilder.Extractor.getExtractor;
  */
 @DoNotExtract
 public class Util {
-    private static List<String> alphabets = Arrays.asList("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z");
+    private static List<String> alphabets = Arrays.asList("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+            "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n",
+            "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z");
     private static List<String> numbers = Arrays.asList("0", "1", "2", "3", "4", "5", "6", "7", "8", "9");
     private Factory factory;
 
@@ -37,12 +36,12 @@ public class Util {
     public static CtField<String> createFieldInConstantClass(String stringLiteral, CtType<?> constantClass) {
         int i = 0;
         int stringKeyIterationIndex = 0;
-        String stringKey = getkeyForLiteral(stringLiteral, stringKeyIterationIndex);
+        String stringKey = buildTranslationKey(stringLiteral, stringKeyIterationIndex);
         Object value = getExtractor().getProperties().get(stringKey);
 
         if (value != null && !value.equals(stringLiteral)) {
             while (value != null && !value.equals(stringLiteral)) {
-                stringKey = getkeyForLiteral(stringLiteral, ++stringKeyIterationIndex);
+                stringKey = buildTranslationKey(stringLiteral, ++stringKeyIterationIndex);
                 value = getExtractor().getProperties().get(stringKey);
             }
         }
@@ -70,64 +69,76 @@ public class Util {
         return argumentField;
     }
 
-    private static String getkeyForLiteral(String stringLiteral, int iteration) {
+    private static String buildTranslationKey(String stringLiteral, int iteration) {
         StringBuilder keyBuilder = new StringBuilder();
         char[] charArray = stringLiteral.toCharArray();
+        String separator = ".";
         for (int i = 0, charArrayLength = charArray.length; i < charArrayLength; i++) {
             char c = charArray[i];
             if (i == 0) {
                 if (numbers.contains(String.valueOf(c))) {
-                    keyBuilder.append(".");
+                    appendSeparator(keyBuilder, separator);
                     keyBuilder.append(c);
-                } else if (!alphabets.contains(String.valueOf(c).toUpperCase())) {
-                    keyBuilder.append(".");
+                } else if (!alphabets.contains(String.valueOf(c))) {
+                    appendSeparator(keyBuilder, separator);
                 } else {
                     keyBuilder.append(c);
                 }
             } else {
-                if (!alphabets.contains(String.valueOf(c).toUpperCase()) && !numbers.contains(String.valueOf(c))) {
-                    keyBuilder.append(".");
+                if (!alphabets.contains(String.valueOf(c)) && !numbers.contains(String.valueOf(c))) {
+                    appendSeparator(keyBuilder, separator);
                 } else {
                     keyBuilder.append(c);
                 }
             }
         }
         String key = keyBuilder.toString().trim();
+        if (key.equals(separator)) {
+            key = "";
+        }
         if (StringUtils.isBlank(key)) {
-            key = "key";
+            key = "translationKey";
         }
-        if (key.startsWith(".")) {
-            key = "key" + key;
+        if (key.startsWith(separator)) {
+            key = "translationKey" + key;
         }
-        if (key.endsWith(".")) {
-            key = key + "key";
+        if (key.endsWith(separator)) {
+            key = key + "translationKey";
         }
-        if (key.length() > 20) {
-            key = key.substring(0, 20);
+        if (key.length() > 30) {
+            key = key.substring(0, 30);
         }
         if (iteration > 0) {
-            key = key + "." + iteration;
+            key = key + separator + iteration;
         }
-        return key.toLowerCase();
+        return key;
+    }
+
+    private static StringBuilder appendSeparator(StringBuilder builder, String separator) {
+        if (!builder.toString().endsWith(separator)) {
+            return builder.append(separator);
+        }
+        return builder;
     }
 
     private static String generateHolderClassKeyFieldName(String literalValue, int iteration) {
         StringBuilder fieldNameBuilder = new StringBuilder();
         char[] charArray = literalValue.toCharArray();
+        String separator = "_";
         for (int i = 0, charArrayLength = charArray.length; i < charArrayLength; i++) {
             char c = charArray[i];
             if (i == 0) {
                 if (numbers.contains(String.valueOf(c))) {
                     fieldNameBuilder.append("KEY");
                     fieldNameBuilder.append(c);
-                } else if (!alphabets.contains(String.valueOf(c).toUpperCase())) {
-                    fieldNameBuilder.append("_");
+                } else if (!alphabets.contains(String.valueOf(c))) {
+                    appendSeparator(fieldNameBuilder, separator);
                 } else {
                     fieldNameBuilder.append(c);
                 }
             } else {
-                if (!alphabets.contains(String.valueOf(c).toUpperCase()) && !numbers.contains(String.valueOf(c))) {
-                    fieldNameBuilder.append("_");
+                if (!alphabets.contains(String.valueOf(c)) && !numbers.contains(String.valueOf(c))) {
+                    appendSeparator(fieldNameBuilder, separator);
                 } else {
                     fieldNameBuilder.append(c);
                 }
@@ -135,41 +146,76 @@ public class Util {
         }
 
         String fieldName = fieldNameBuilder.toString().trim();
+        if (fieldName.equals(separator)) {
+            fieldName = "";
+        }
         if (StringUtils.isBlank(fieldName)) {
             fieldName = "key";
         }
-        if (fieldName.length() > 20) {
-            fieldName = fieldName.substring(0, 20);
+        if (fieldName.length() > 30) {
+            fieldName = fieldName.substring(0, 30);
         }
         if (iteration > 0) {
-            fieldName = fieldName + "_" + iteration;
+            fieldName = fieldName + separator + iteration;
         }
         return fieldName.toUpperCase();
     }
 
-    public void replace(CtLiteral<String> element, CtField<String> constantField) {
-        if (shouldExtract(element)) {
-            element.replace(convertFieldToExpression(constantField));
-        }
-    }
-
-    private boolean shouldExtract(CtLiteral<String> element) {
+    public static boolean canExtract(CtLiteral<String> element) {
         if (element.getParent() instanceof CtLocalVariableImpl) {
             return true;
         } else if (element.getParent() instanceof CtField) {
             return true;
         } else if (element.getParent() instanceof CtConstructorCall) {
-            return true;
+            CtConstructorCall<?> ctElement = (CtConstructorCall<?>) element.getParent();
+            return !isExcludedType(ctElement.getType().getQualifiedName());
         } else if (element.getParent() instanceof CtAnnotation) {
             CtAnnotation<?> ctAnnotation = (CtAnnotation<?>) element.getParent();
-            return !getExtractor().getConfig().getExcludeAnnotationLiterals()
-                    .contains(ctAnnotation.getAnnotationType()
-                            .getQualifiedName());
+            return !isExcludedType(ctAnnotation.getType().getQualifiedName());
         } else if (element.getParent() instanceof CtNewArray) {
             return true;
         } else
             return element.getParent() instanceof CtInvocation;
 
+    }
+
+    private static boolean isExcludedType(String qualifiedName) {
+        List<String> excludeTypeLiterals = getExtractor().getConfig().getExcludeTypeLiterals();
+        long exactTypeExclusionMatches = excludeTypeLiterals
+                .stream().filter(s -> !s.endsWith(".*"))
+                .filter(s -> s.equals(qualifiedName))
+                .count();
+        if (exactTypeExclusionMatches > 0) {
+            return true;
+        }
+        long wildcardTypeExclusionMatches = excludeTypeLiterals
+                .stream().filter(s -> s.endsWith(".*"))
+                .map(s -> s.replace(".*", ""))
+                .filter(s -> qualifiedName.startsWith(s))
+                .count();
+        return wildcardTypeExclusionMatches > 0;
+    }
+
+    public static boolean hasDoNotExtractAnnotation(CtElement element) {
+        if (element instanceof CtPackage) {
+            return false;
+        }
+        if (element == null) {
+            return false;
+        }
+        if (element.hasAnnotation(DoNotExtract.class)) {
+            return true;
+        }
+        return hasDoNotExtractAnnotation(element.getParent());
+    }
+
+    public static boolean isExcluded(CtAnnotation element) {
+
+        return hasDoNotExtractAnnotation(element.getParent());
+    }
+
+    public void replace(CtLiteral<String> element, CtField<String> constantField) {
+        element.replace(convertFieldToExpression(constantField));
     }
 
     public CtExpression convertFieldToExpression(CtField<String> argumentField) {

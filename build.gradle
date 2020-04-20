@@ -25,9 +25,7 @@ dependencies {
     compile group: 'fr.inria.gforge.spoon', name: 'spoon-core', version: '8.2.0-beta-2'
     implementation 'com.github.gibahjoe:i18n-extractor-annotations:1.0.0'
     // https://mvnrepository.com/artifact/javax.validation/validation-api
-    compile group: 'javax.validation', name: 'validation-api', version: '2.0.1.Final'
-    // https://mvnrepository.com/artifact/com.squareup/javapoet
-    compile group: 'com.squareup', name: 'javapoet', version: '1.12.1'
+    testCompile group: 'javax.validation', name: 'validation-api', version: '2.0.1.Final'
 }
 test {
     useJUnitPlatform()

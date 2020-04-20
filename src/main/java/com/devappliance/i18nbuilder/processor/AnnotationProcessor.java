@@ -54,7 +54,10 @@ public class AnnotationProcessor extends AbstractAnnotationProcessor<Extract, Ct
             @Override
             public boolean matches(CtLiteral<String> ctLiteral) {
                 CtTypeReference<String> ctLiteralType = ctLiteral.getType();
-                if (ctLiteral.hasAnnotation(DoNotExtract.class)) {
+                if (Util.hasDoNotExtractAnnotation(ctLiteral)) {
+                    return false;
+                }
+                if (!Util.canExtract(ctLiteral)) {
                     return false;
                 }
                 if (ctLiteralType == null) {

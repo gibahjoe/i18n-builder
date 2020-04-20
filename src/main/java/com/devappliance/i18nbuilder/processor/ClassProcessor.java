@@ -2,6 +2,7 @@ package com.devappliance.i18nbuilder.processor;
 
 import com.devappliance.i18n.annotation.DoNotExtract;
 import com.devappliance.i18nbuilder.Util;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import spoon.SpoonAPI;
@@ -48,12 +49,24 @@ public class ClassProcessor extends AbstractProcessor<CtType<?>> {
 
     @Override
     public void process(CtType<?> element) {
-        element.getQualifiedName();
+        List<String> excludePackages = getExtractor().getConfig().getExcludePackages();
+        String formattedPackageExclude = excludePackages.stream().map(s -> {
+            if (s.endsWith(".*")) {
+                return s.replace(".*", "");
+            }
+            return s;
+        }).filter(s -> element.getQualifiedName().startsWith(s)).findAny().orElse(null);
+        if (!StringUtils.isBlank(formattedPackageExclude)) {
+            return;
+        }
         List<CtLiteral<String>> elements = element.getElements(new TypeFilter<CtLiteral<String>>(CtLiteral.class) {
             @Override
             public boolean matches(CtLiteral<String> ctLiteral) {
                 CtTypeReference<String> ctLiteralType = ctLiteral.getType();
-                if (ctLiteral.hasAnnotation(DoNotExtract.class)) {
+                if (Util.hasDoNotExtractAnnotation(ctLiteral)) {
+                    return false;
+                }
+                if (!Util.canExtract(ctLiteral)) {
                     return false;
                 }
                 if (ctLiteralType == null) {
