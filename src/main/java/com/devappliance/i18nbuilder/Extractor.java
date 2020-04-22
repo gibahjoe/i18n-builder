@@ -12,7 +12,6 @@ import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.declaration.ModifierKind;
 import spoon.reflect.factory.TypeFactory;
-import spoon.reflect.visitor.filter.TypeFilter;
 import spoon.support.reflect.declaration.CtAnnotationImpl;
 import spoon.support.sniper.SniperJavaPrettyPrinter;
 
@@ -27,15 +26,21 @@ import java.util.*;
 @DoNotExtract
 public class Extractor {
     private static Extractor INSTANCE = new Extractor();
-    private Config config = new Config();
+    private Config config;
+    private Util util;
     private Properties properties;
 
-    public static Extractor getExtractor() {
-        return INSTANCE;
+    public Extractor() {
+        this.config = new Config();
+        this.util = new Util(this.config, this.properties);
     }
 
     public Config getConfig() {
         return config;
+    }
+
+    public Util getUtil() {
+        return new Util(this.config, this.properties);
     }
 
     public Properties getProperties() {
@@ -47,12 +52,16 @@ public class Extractor {
         return this;
     }
 
+    //    public CtExpression convertFieldToExpression(CtField<String> argumentField) {
+//        return factory.createCodeSnippetExpression((((argumentField.getDeclaringType().getPackage().getQualifiedName() + ".") + argumentField.getDeclaringType().getSimpleName()) + ".") + argumentField.getSimpleName());
+//    }
     public SpoonAPI run() {
         SpoonAPI launcher = new Launcher();
         Environment environment = launcher.getEnvironment();
-        properties = loadPropertiesFile(environment);
+        this.properties = loadPropertiesFile();
 
-        if (!getConfig().isRewriteEntireClass()) {
+        final Config config = getConfig();
+        if (!config.isRewriteEntireClass()) {
             launcher.getEnvironment().setPrettyPrinterCreator(() -> {
                 SniperJavaPrettyPrinter sniperJavaPrettyPrinter = new SniperJavaPrettyPrinter(launcher.getEnvironment());
                 return sniperJavaPrettyPrinter;
@@ -62,22 +71,21 @@ public class Extractor {
         environment.setNoClasspath(true);
         environment.setAutoImports(true);
 
-        getConfig().inputResources.stream().forEach((s) -> {
+        config.inputResources.stream().forEach((s) -> {
             launcher.addInputResource(s);
         });
-        launcher.setSourceOutputDirectory(getConfig().sourceOutputDirectory);
+        launcher.setSourceOutputDirectory(config.sourceOutputDirectory);
+
 
 //        environment.setLevel(Level.DEBUG.name());
         CtModel ctModel = launcher.buildModel();
-        List<CtType<?>> keyHolderClassMatches = ctModel.getElements(new TypeFilter<CtType<?>>(CtType.class) {
-            @Override
-            public boolean matches(CtType<?> element) {
-                return element.getQualifiedName().equals(getConfig().translationKeyHolderClass);
-            }
-        });
-        CtType<?> messagesClass = keyHolderClassMatches.size() > 0 ? keyHolderClassMatches.get(0) : null;
+        if (config.translationKeyHolderClass == null) {
+            config.translationKeyHolderClass = "com.devappliance.ExtractedKeys";
+        }
+
+        CtType<?> messagesClass = launcher.getFactory().Type().get(config.translationKeyHolderClass);
         if (messagesClass == null) {
-            String baseClassFqn = getConfig().translationKeyHolderClass;
+            String baseClassFqn = config.translationKeyHolderClass;
             messagesClass = launcher.getFactory().createClass(baseClassFqn);
             messagesClass.addModifier(ModifierKind.PUBLIC);
             environment.debugMessage("===> Generated translation key holder at " + messagesClass.getPath().toString());
@@ -87,23 +95,22 @@ public class Extractor {
             annotation.setAnnotationType(new TypeFactory().get(DoNotExtract.class).getReference());
             messagesClass.addAnnotation(annotation);
         }
-
         List<String> processedPackages;
-        if (getConfig().getMode() == ExtractionMode.ANNOTATED) {
-            AnnotationProcessor processor = new AnnotationProcessor(messagesClass, launcher);
+        if (config.getMode() == ExtractionMode.ANNOTATED) {
+            AnnotationProcessor processor = new AnnotationProcessor(messagesClass, launcher, this);
             launcher.addProcessor(processor);
             launcher.process();
             processedPackages = processor.getProcessedPackages();
         } else {
-            ClassProcessor processor = new ClassProcessor(messagesClass, launcher);
+            ClassProcessor processor = new ClassProcessor(messagesClass, launcher, this);
             launcher.addProcessor(processor);
             launcher.process();
             processedPackages = processor.getProcessedPackages();
         }
-        processedPackages.add(getConfig().translationKeyHolderClass);
+        processedPackages.add(config.translationKeyHolderClass);
         launcher.setOutputFilter(processedPackages.toArray(new String[]{}));
         try {
-            exportProps(environment);
+            exportProps();
             launcher.prettyprint();
         } catch (IOException e) {
             e.printStackTrace();
@@ -111,7 +118,7 @@ public class Extractor {
         return launcher;
     }
 
-    private void exportProps(Environment environment) throws IOException {
+    private void exportProps() throws IOException {
         File outputFile = new File(getConfig().translationKeysOutputFile);
         if (!outputFile.exists()) {
             outputFile.getParentFile().mkdirs();
@@ -121,14 +128,14 @@ public class Extractor {
         }
     }
 
-    private Properties loadPropertiesFile(Environment environment) {
-        Properties prop = new Properties();
+    private Properties loadPropertiesFile() {
+        this.properties = new Properties();
         try (InputStream in = new FileInputStream(getConfig().translationKeysOutputFile)) {
-            prop.load(in);
+            this.properties.load(in);
         } catch (IOException e) {
-            environment.debugMessage("===> Unable to read Key output file at " + getConfig().translationKeysOutputFile + " generating a new one...");
+            System.out.println("===> Unable to read Key output file at " + getConfig().translationKeysOutputFile + " generating a new one...");
         }
-        return prop;
+        return this.properties;
     }
 
     @DoNotExtract

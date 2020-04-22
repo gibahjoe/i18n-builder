@@ -1,7 +1,8 @@
-package com.devappliance.i18nbuilder.processor.classprocessor.src;
+package com.devappliance.i18nbuilder.processor.annotationprocessor.source;
 
 import com.devappliance.i18n.annotation.DoNotExtract;
-import com.devappliance.i18nbuilder.processor.classprocessor.src.other.ReviewDto;
+import com.devappliance.i18n.annotation.Extract;
+import com.devappliance.i18nbuilder.processor.annotationprocessor.source.other.ReviewDto;
 
 import javax.validation.Valid;
 import javax.validation.constraints.DecimalMin;
@@ -13,12 +14,13 @@ import javax.validation.constraints.NotNull;
  * Email: gibahjoe@gmail.com
  * Apr, 2020
  **/
-public class TestSource {
+@Extract
+public class AnnotatedSource {
     private String firstName = "test for field literal";
     private String lastName;
 
 
-    public TestSource(@NotBlank String firstName, String lastName) {
+    public AnnotatedSource(@NotBlank String firstName, String lastName) {
         this.firstName = firstName;
         this.lastName = lastName;
     }
@@ -27,7 +29,7 @@ public class TestSource {
         return firstName;
     }
 
-    public TestSource setFirstName(String firstName) {
+    public AnnotatedSource setFirstName(String firstName) {
         this.firstName = firstName;
         return this;
     }
@@ -36,13 +38,13 @@ public class TestSource {
         return lastName;
     }
 
-    public TestSource setLastName(String lastName) {
+    public AnnotatedSource setLastName(String lastName) {
         this.lastName = lastName;
         return this;
     }
 
     public void testForConstructorLiterals() {
-        TestSource t = new TestSource("first parameter", "second parameter");
+        AnnotatedSource t = new AnnotatedSource("first parameter", "second parameter");
     }
 
     public void testForExceptionInvocation() {

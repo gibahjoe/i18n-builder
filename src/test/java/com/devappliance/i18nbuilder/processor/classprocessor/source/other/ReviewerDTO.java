@@ -1,4 +1,4 @@
-package com.devappliance.i18nbuilder.processor.annotationprocessor.src.other;
+package com.devappliance.i18nbuilder.processor.classprocessor.source.other;
 
 import javax.validation.constraints.NotBlank;
 

@@ -1,23 +1,23 @@
 package com.devappliance.i18nbuilder.processor;
 
 import com.devappliance.i18n.annotation.DoNotExtract;
-import com.devappliance.i18nbuilder.Util;
+import com.devappliance.i18nbuilder.Extractor;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import spoon.SpoonAPI;
 import spoon.processing.AbstractProcessor;
+import spoon.reflect.code.CtFieldAccess;
 import spoon.reflect.code.CtLiteral;
 import spoon.reflect.declaration.CtField;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.path.CtRole;
+import spoon.reflect.reference.CtFieldReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.filter.TypeFilter;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.devappliance.i18nbuilder.Extractor.getExtractor;
 
 /**
  * @author Gibah Joseph
@@ -33,10 +33,12 @@ public class ClassProcessor extends AbstractProcessor<CtType<?>> {
     private List<String> processedPackages = new ArrayList<>();
 
     private SpoonAPI launcher;
+    private Extractor extractor;
 
-    public ClassProcessor(CtType<?> messagesFile, SpoonAPI launcher) {
+    public ClassProcessor(CtType<?> messagesFile, SpoonAPI launcher, Extractor extractor) {
         this.messagesFile = messagesFile;
         this.launcher = launcher;
+        this.extractor = extractor;
     }
 
     @Override
@@ -49,7 +51,7 @@ public class ClassProcessor extends AbstractProcessor<CtType<?>> {
 
     @Override
     public void process(CtType<?> element) {
-        List<String> excludePackages = getExtractor().getConfig().getExcludePackages();
+        List<String> excludePackages = extractor.getConfig().getExcludePackages();
         String formattedPackageExclude = excludePackages.stream().map(s -> {
             if (s.endsWith(".*")) {
                 return s.replace(".*", "");
@@ -63,10 +65,10 @@ public class ClassProcessor extends AbstractProcessor<CtType<?>> {
             @Override
             public boolean matches(CtLiteral<String> ctLiteral) {
                 CtTypeReference<String> ctLiteralType = ctLiteral.getType();
-                if (Util.hasDoNotExtractAnnotation(ctLiteral)) {
+                if (extractor.getUtil().hasDoNotExtractAnnotation(ctLiteral)) {
                     return false;
                 }
-                if (!Util.canExtract(ctLiteral)) {
+                if (!extractor.getUtil().canExtract(ctLiteral)) {
                     return false;
                 }
                 if (ctLiteralType == null) {
@@ -81,10 +83,15 @@ public class ClassProcessor extends AbstractProcessor<CtType<?>> {
         boolean modified = false;
         for (CtLiteral<String> stringCtLiteral : elements) {
             String literalValue = stringCtLiteral.getValue();
-            CtField<String> fieldInConstantClass = Util.createFieldInConstantClass(literalValue, messagesFile);
+            CtField<String> fieldInConstantClass = extractor.getUtil().createFieldInConstantClass(literalValue, messagesFile);
             CtLiteral<String> literalVariableKey = fieldInConstantClass.getValueByRole(CtRole.ASSIGNMENT);
-            getExtractor().addProperty(literalVariableKey.getValue(), literalValue);
-            new Util(getFactory()).replace(stringCtLiteral, fieldInConstantClass);
+            extractor.addProperty(literalVariableKey.getValue(), literalValue);
+
+            CtFieldReference<String> ctFieldReference = getFactory().Field().createReference(fieldInConstantClass);
+            ctFieldReference.setStatic(true);
+            CtFieldAccess<String> fieldRead = getFactory().Core().createFieldRead();
+            fieldRead.setVariable(ctFieldReference);
+            stringCtLiteral.replace(fieldRead);
             modified = true;
         }
         if (modified) {

@@ -1,9 +1,10 @@
-package com.devappliance.i18nbuilder.processor.annotationprocessor.src;
+package com.devappliance.i18nbuilder.processor.classprocessor.source;
 
-import com.devappliance.i18n.annotation.Extract;
-import com.devappliance.i18nbuilder.processor.annotationprocessor.src.other.ReviewDto;
+import com.devappliance.i18n.annotation.DoNotExtract;
+import com.devappliance.i18nbuilder.processor.classprocessor.source.other.ReviewDto;
 
 import javax.validation.Valid;
+import javax.validation.constraints.DecimalMin;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 
@@ -12,7 +13,6 @@ import javax.validation.constraints.NotNull;
  * Email: gibahjoe@gmail.com
  * Apr, 2020
  **/
-@Extract
 public class TestSource {
     private String firstName = "test for field literal";
     private String lastName;
@@ -61,7 +61,16 @@ public class TestSource {
         throw new IllegalArgumentException("An Error has occurred");
     }
 
+    @DoNotExtract
+    public void testMethodExclusionAnnotation(@Valid String firstName) {
+        throw new IllegalArgumentException("testMethodExclusionAnnotation");
+    }
+
     public void testThatValidAnnotationImportsAreCreated(@Valid @NotNull ReviewDto reviewDto) {
         throw new IllegalArgumentException("An Error has occurred");
+    }
+
+    public void testTypeLiteralsExclusion(@DecimalMin("testthatnotextracted") int val) {
+        throw new ArrayIndexOutOfBoundsException("testTypeLiteralsExclusion");
     }
 }

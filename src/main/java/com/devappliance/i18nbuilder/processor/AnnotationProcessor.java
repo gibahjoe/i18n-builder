@@ -2,23 +2,23 @@ package com.devappliance.i18nbuilder.processor;
 
 import com.devappliance.i18n.annotation.DoNotExtract;
 import com.devappliance.i18n.annotation.Extract;
-import com.devappliance.i18nbuilder.Util;
+import com.devappliance.i18nbuilder.Extractor;
 import spoon.SpoonAPI;
 import spoon.processing.AbstractAnnotationProcessor;
+import spoon.reflect.code.CtFieldAccess;
 import spoon.reflect.code.CtLiteral;
 import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtField;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.path.CtRole;
+import spoon.reflect.reference.CtFieldReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.filter.TypeFilter;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.devappliance.i18nbuilder.Extractor.getExtractor;
 
 /**
  * @author Gibah Joseph
@@ -32,10 +32,12 @@ public class AnnotationProcessor extends AbstractAnnotationProcessor<Extract, Ct
     private List<String> processedPackages = new ArrayList<>();
 
     private SpoonAPI launcher;
+    private Extractor extractor;
 
-    public AnnotationProcessor(CtType<?> messagesFile, SpoonAPI launcher) {
+    public AnnotationProcessor(CtType<?> messagesFile, SpoonAPI launcher, Extractor extractor) {
         this.messagesFile = messagesFile;
         this.launcher = launcher;
+        this.extractor = extractor;
     }
 
     @Override
@@ -54,10 +56,10 @@ public class AnnotationProcessor extends AbstractAnnotationProcessor<Extract, Ct
             @Override
             public boolean matches(CtLiteral<String> ctLiteral) {
                 CtTypeReference<String> ctLiteralType = ctLiteral.getType();
-                if (Util.hasDoNotExtractAnnotation(ctLiteral)) {
+                if (extractor.getUtil().hasDoNotExtractAnnotation(ctLiteral)) {
                     return false;
                 }
-                if (!Util.canExtract(ctLiteral)) {
+                if (!extractor.getUtil().canExtract(ctLiteral)) {
                     return false;
                 }
                 if (ctLiteralType == null) {
@@ -72,10 +74,15 @@ public class AnnotationProcessor extends AbstractAnnotationProcessor<Extract, Ct
         boolean modified = false;
         for (CtLiteral<String> stringCtLiteral : elements) {
             String literalValue = stringCtLiteral.getValue();
-            CtField<String> fieldInConstantClass = Util.createFieldInConstantClass(literalValue, messagesFile);
+            CtField<String> fieldInConstantClass = extractor.getUtil().createFieldInConstantClass(literalValue, messagesFile);
             CtLiteral<String> literalVariableKey = fieldInConstantClass.getValueByRole(CtRole.ASSIGNMENT);
-            getExtractor().addProperty(literalVariableKey.getValue(), literalValue);
-            new Util(getFactory()).replace(stringCtLiteral, fieldInConstantClass);
+            extractor.addProperty(literalVariableKey.getValue(), literalValue);
+
+            CtFieldReference<String> ctFieldReference = getFactory().Field().createReference(fieldInConstantClass);
+            ctFieldReference.setStatic(true);
+            CtFieldAccess<String> fieldRead = getFactory().Core().createFieldRead();
+            fieldRead.setVariable(ctFieldReference);
+            stringCtLiteral.replace(fieldRead);
             modified = true;
         }
         if (modified) {

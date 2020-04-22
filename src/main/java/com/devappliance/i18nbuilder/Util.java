@@ -2,9 +2,11 @@ package com.devappliance.i18nbuilder;
 
 import com.devappliance.i18n.annotation.DoNotExtract;
 import org.apache.commons.lang3.StringUtils;
-import spoon.reflect.code.*;
+import spoon.reflect.code.CtConstructorCall;
+import spoon.reflect.code.CtInvocation;
+import spoon.reflect.code.CtLiteral;
+import spoon.reflect.code.CtNewArray;
 import spoon.reflect.declaration.*;
-import spoon.reflect.factory.Factory;
 import spoon.reflect.factory.TypeFactory;
 import spoon.reflect.path.CtRole;
 import spoon.support.reflect.code.CtLiteralImpl;
@@ -13,8 +15,7 @@ import spoon.support.reflect.declaration.CtFieldImpl;
 
 import java.util.Arrays;
 import java.util.List;
-
-import static com.devappliance.i18nbuilder.Extractor.getExtractor;
+import java.util.Properties;
 
 /**
  * @author Gibah Joseph
@@ -23,26 +24,30 @@ import static com.devappliance.i18nbuilder.Extractor.getExtractor;
  */
 @DoNotExtract
 public class Util {
-    private static List<String> alphabets = Arrays.asList("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+    private static final List<String> alphabets = Arrays.asList("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
             "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n",
             "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z");
-    private static List<String> numbers = Arrays.asList("0", "1", "2", "3", "4", "5", "6", "7", "8", "9");
-    private Factory factory;
+    private static final List<String> numbers = Arrays.asList("0", "1", "2", "3", "4", "5", "6", "7", "8", "9");
 
-    public Util(Factory factory) {
-        this.factory = factory;
+    private final Extractor.Config config;
+    private final Properties properties;
+
+
+    public Util(Extractor.Config config, Properties properties) {
+        this.config = config;
+        this.properties = properties;
     }
 
-    public static CtField<String> createFieldInConstantClass(String stringLiteral, CtType<?> constantClass) {
+    public CtField<String> createFieldInConstantClass(String stringLiteral, CtType<?> constantClass) {
         int i = 0;
         int stringKeyIterationIndex = 0;
         String stringKey = buildTranslationKey(stringLiteral, stringKeyIterationIndex);
-        Object value = getExtractor().getProperties().get(stringKey);
+        Object value = properties.get(stringKey);
 
         if (value != null && !value.equals(stringLiteral)) {
             while (value != null && !value.equals(stringLiteral)) {
                 stringKey = buildTranslationKey(stringLiteral, ++stringKeyIterationIndex);
-                value = getExtractor().getProperties().get(stringKey);
+                value = properties.get(stringKey);
             }
         }
         String constantClassKeyFieldName = generateHolderClassKeyFieldName(stringLiteral, i);
@@ -69,7 +74,7 @@ public class Util {
         return argumentField;
     }
 
-    private static String buildTranslationKey(String stringLiteral, int iteration) {
+    private String buildTranslationKey(String stringLiteral, int iteration) {
         StringBuilder keyBuilder = new StringBuilder();
         char[] charArray = stringLiteral.toCharArray();
         String separator = ".";
@@ -114,14 +119,14 @@ public class Util {
         return key;
     }
 
-    private static StringBuilder appendSeparator(StringBuilder builder, String separator) {
+    private StringBuilder appendSeparator(StringBuilder builder, String separator) {
         if (!builder.toString().endsWith(separator)) {
             return builder.append(separator);
         }
         return builder;
     }
 
-    private static String generateHolderClassKeyFieldName(String literalValue, int iteration) {
+    private String generateHolderClassKeyFieldName(String literalValue, int iteration) {
         StringBuilder fieldNameBuilder = new StringBuilder();
         char[] charArray = literalValue.toCharArray();
         String separator = "_";
@@ -161,7 +166,7 @@ public class Util {
         return fieldName.toUpperCase();
     }
 
-    public static boolean canExtract(CtLiteral<String> element) {
+    public boolean canExtract(CtLiteral<String> element) {
         if (element.getParent() instanceof CtLocalVariableImpl) {
             return true;
         } else if (element.getParent() instanceof CtField) {
@@ -179,8 +184,8 @@ public class Util {
 
     }
 
-    private static boolean isExcludedType(String qualifiedName) {
-        List<String> excludeTypeLiterals = getExtractor().getConfig().getExcludeTypeLiterals();
+    private boolean isExcludedType(String qualifiedName) {
+        List<String> excludeTypeLiterals = config.getExcludeTypeLiterals();
         long exactTypeExclusionMatches = excludeTypeLiterals
                 .stream().filter(s -> !s.endsWith(".*"))
                 .filter(s -> s.equals(qualifiedName))
@@ -196,7 +201,7 @@ public class Util {
         return wildcardTypeExclusionMatches > 0;
     }
 
-    public static boolean hasDoNotExtractAnnotation(CtElement element) {
+    public boolean hasDoNotExtractAnnotation(CtElement element) {
         if (element instanceof CtPackage) {
             return false;
         }
@@ -209,16 +214,12 @@ public class Util {
         return hasDoNotExtractAnnotation(element.getParent());
     }
 
-    public static boolean isExcluded(CtAnnotation element) {
+    public boolean isExcluded(CtAnnotation element) {
 
         return hasDoNotExtractAnnotation(element.getParent());
     }
 
     public void replace(CtLiteral<String> element, CtField<String> constantField) {
-        element.replace(convertFieldToExpression(constantField));
-    }
 
-    public CtExpression convertFieldToExpression(CtField<String> argumentField) {
-        return factory.createCodeSnippetExpression((((argumentField.getDeclaringType().getPackage().getQualifiedName() + ".") + argumentField.getDeclaringType().getSimpleName()) + ".") + argumentField.getSimpleName());
     }
 }

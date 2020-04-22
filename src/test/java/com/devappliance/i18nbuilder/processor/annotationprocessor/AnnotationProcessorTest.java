@@ -1,27 +1,26 @@
 package com.devappliance.i18nbuilder.processor.annotationprocessor;
 
 import com.devappliance.ProcessorTest;
-import com.devappliance.i18nbuilder.Util;
+import com.devappliance.i18nbuilder.Extractor;
 import com.devappliance.i18nbuilder.enums.ExtractionMode;
-import com.devappliance.i18nbuilder.processor.classprocessor.src.TestSource;
+import com.devappliance.i18nbuilder.processor.annotationprocessor.source.AnnotatedSource;
+import com.devappliance.i18nbuilder.processor.classprocessor.source.TestSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import spoon.Launcher;
 import spoon.SpoonAPI;
 import spoon.reflect.code.CtLiteral;
+import spoon.reflect.cu.CompilationUnit;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.filter.TypeFilter;
 
 import java.io.File;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 
-import static com.devappliance.i18nbuilder.Extractor.getExtractor;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -29,75 +28,86 @@ import static org.junit.jupiter.api.Assertions.*;
  * Email: gibahjoe@gmail.com
  * Apr, 2020
  **/
-@Disabled
+
 class AnnotationProcessorTest implements ProcessorTest {
 
-    public static final String TEST_SOURCE_PACKAGE_FILE = "com/devappliance/processor/annotationprocessor/src/TestSource.java";
-    private static final String CONTEXT = "annotationprocessor";
+    @TempDir
+    public File outputDir;
+    private Extractor.Config config;
+    private Extractor extractor;
 
     @BeforeEach
-    void setUp() {
+    void setUp(@TempDir File outputDir) {
+        extractor = new Extractor();
+        config = extractor.getConfig();
+        config.setMode(ExtractionMode.ANNOTATED);
+        config.setSourceOutputDirectory(outputDir.getAbsolutePath());
     }
 
     @AfterEach
     void tearDown() {
+        config = null;
     }
 
     @Test
     public void testThatCanProcessClass(@TempDir File outputDir) {
-        getExtractor().getConfig().addInputFolders("src/test/java/com/devappliance/i18nbuilder/processor/src/TestSource.java");
+        config.addInputFolders("src/test/java/com/devappliance/i18nbuilder/processor/annotationprocessor/source");
 //        getExtractor().getConfig().addInputFolders("dental-door-integration-impl/src/main/java");
-        getExtractor().getConfig().setTranslationKeyHolderClass("com.devappliance.i18nbuilder.generated." + CONTEXT + ".testThatCanProcessClass.Messages");
-        getExtractor().getConfig().setSourceOutputDirectory(outputDir.getAbsolutePath());
-        getExtractor().getConfig()
-                .setMode(ExtractionMode.ANNOTATED);
-        getExtractor().getConfig().setTranslationKeysOutputFile("src/test/resources/" + CONTEXT + "/testThatCanProcessClass/messages.properties");
-        SpoonAPI spoonAPI = getExtractor().run();
+        config.setTranslationKeyHolderClass("com.devappliance.i18nbuilder.Messages");
+        config.setSourceOutputDirectory(outputDir.getAbsolutePath());
+        config.setTranslationKeysOutputFile(outputDir.getAbsolutePath() + "/src/test/resources/messages.properties");
+        SpoonAPI spoonAPI = extractor.run();
 
-        assertTrue(new File(outputDir.getAbsolutePath() + File.separator + "com/devappliance/i18nbuilder/processor/src/TestSource.java").exists());
+        assertTrue(new File(outputDir.getAbsolutePath() + File.separator + "com/devappliance/i18nbuilder/processor/annotationprocessor/source/AnnotatedSource.java").exists());
+        assertFalse(new File(outputDir.getAbsolutePath() + File.separator + "com/devappliance/i18nbuilder/processor/annotationprocessor/source/UnAnnotatedSource.java").exists());
+        assertTrue(new File(outputDir.getAbsolutePath() + File.separator + "com/devappliance/i18nbuilder/Messages.java").exists());
+        assertTrue(new File(outputDir.getAbsolutePath() + File.separator + "src/test/resources/messages.properties").exists());
+    }
+
+    @Override
+    @Test
+    @Disabled
+    public void testThatDoNotExtractAnnotationWorks() {
+        config.addInputFolders("src/test/java/com/devappliance/i18nbuilder/processor/annotationprocessor/source/AnnotatedSource.java");
+//        extractor.getConfig().addInputFolders("dental-door-integration-impl/src/main/java");
+        config.getExcludeTypeLiterals().add("java.lang.ArrayIndexOutOfBoundsException");
+        config.getExcludeTypeLiterals().add("javax.validation.constraints.DecimalMin");
+        SpoonAPI spoonAPI = extractor.run();
+
+        CtType<TestSource> type = spoonAPI.getFactory().Type().get(AnnotatedSource.class);
+        CompilationUnit compilationUnit = spoonAPI.getFactory().CompilationUnit().getOrCreate(type);
+
+        assertEquals(1, compilationUnit.getImports().stream()
+                .filter(ctImport -> ctImport.prettyprint().
+                        equals("import com.devappliance.i18nbuilder.processor.annotationprocessor.source.other.ReviewDto;"))
+                .count());
     }
 
     @Test
-    public void testThatDoNotExtractAnnotationWorks(@TempDir File outputDir) {
-        getExtractor().getConfig().addInputFolders("src/test/java/com/devappliance/i18nbuilder/processor/src/TestSource.java");
-//        getExtractor().getConfig().addInputFolders("dental-door-integration-impl/src/main/java");
-        getExtractor().getConfig().setTranslationKeyHolderClass("com.devappliance.i18nbuilder.generated." + CONTEXT + ".testThatCanProcessClass.Messages");
-        getExtractor().getConfig().setSourceOutputDirectory(outputDir.getAbsolutePath());
+    public void testThatFieldLevelDoNotExtractAnnotationWorks() {
+        config.addInputFolders("src/test/java/com/devappliance/i18nbuilder/processor/annotationprocessor/source/AnnotatedSource.java");
+        SpoonAPI spoonAPI = extractor.run();
 
-        getExtractor().getConfig()
-                .setMode(ExtractionMode.ANNOTATED);
-//        getExtractor().getConfig().getExcludeTypeLiterals().add("java.lang.ArrayIndexOutOfBoundsException");
-//        getExtractor().getConfig().getExcludeTypeLiterals().add("javax.validation.constraints.DecimalMin");
-        getExtractor().getConfig().setTranslationKeysOutputFile("src/test/resources/" + CONTEXT + "/testThatCanProcessClass/messages.properties");
-        SpoonAPI spoonAPI = getExtractor().run();
-
-        CtType<?> type = getOutputType(outputDir);
-
+        CtType<TestSource> type = spoonAPI.getFactory().Type().get(AnnotatedSource.class);
         assertNotNull(type);
-        List<CtLiteral<String>> elements = type.getElements(new TypeFilter<CtLiteral<String>>(CtLiteral.class) {
+        List<CtLiteral<String>> ctLiterals = type.getElements(new TypeFilter<CtLiteral<String>>(CtLiteral.class) {
             @Override
             public boolean matches(CtLiteral<String> ctLiteral) {
                 CtTypeReference<String> ctLiteralType = ctLiteral.getType();
-                return Util.hasDoNotExtractAnnotation(ctLiteral);
+                return super.matches(ctLiteral);
             }
         });
-        assertEquals(1, elements.size());
+
+        assertEquals(1, ctLiterals.size());
     }
 
     @Test
-    public void testThatTypeExclusionWorks(@TempDir File outputDir) {
-        getExtractor().getConfig().addInputFolders("src/test/java/com/devappliance/i18nbuilder/processor/src/TestSource.java");
-//        getExtractor().getConfig().addInputFolders("dental-door-integration-impl/src/main/java");
-        getExtractor().getConfig().setTranslationKeyHolderClass("com.devappliance.i18nbuilder.generated." + CONTEXT + ".testThatCanProcessClass.Messages");
-        getExtractor().getConfig().setSourceOutputDirectory(outputDir.getAbsolutePath());
-        getExtractor().getConfig()
-                .setMode(ExtractionMode.ANNOTATED);
-        getExtractor().getConfig().getExcludeTypeLiterals().add("java.lang.ArrayIndexOutOfBoundsException");
-        getExtractor().getConfig().getExcludeTypeLiterals().add("javax.validation.constraints.DecimalMin");
-        getExtractor().getConfig().setTranslationKeysOutputFile("src/test/resources/" + CONTEXT + "/testThatCanProcessClass/messages.properties");
-        SpoonAPI spoonAPI = getExtractor().run();
-
-        CtType<?> type = getOutputType(outputDir);
+    public void testThatTypeExclusionWorks() {
+        config.addInputFolders("src/test/java/com/devappliance/i18nbuilder/processor/annotationprocessor/source/AnnotatedSource.java");
+        config.getExcludeTypeLiterals().add("java.lang.ArrayIndexOutOfBoundsException");
+        config.getExcludeTypeLiterals().add("javax.validation.constraints.DecimalMin");
+        SpoonAPI spoonAPI = extractor.run();
+        CtType<TestSource> type = spoonAPI.getFactory().Type().get(AnnotatedSource.class);
 
         assertNotNull(type);
         List<CtLiteral<String>> elements = type.getElements(new TypeFilter<CtLiteral<String>>(CtLiteral.class) {
@@ -108,21 +118,5 @@ class AnnotationProcessorTest implements ProcessorTest {
             }
         });
         assertEquals(3, new HashSet<>(elements).size());
-    }
-
-    private CtType<?> getOutputType(File outputDir) {
-        System.out.println("====>v" + outputDir.getAbsolutePath());
-        assertTrue(new File(outputDir.getAbsolutePath() + File.separator + "com/devappliance/processor/src/TestSource.java").exists());
-        assertFalse(new File(outputDir.getAbsolutePath() + File.separator + "com/devappliance/processor/src/NonAnnotatedTestSource.java").exists());
-        Launcher launcher = new Launcher();
-        launcher.addInputResource(outputDir.getAbsolutePath() + File.separator + "com/devappliance/i18nbuilder");
-
-
-        launcher.getEnvironment().setNoClasspath(true);
-        launcher.getEnvironment().setAutoImports(true);
-
-        launcher.setSourceOutputDirectory(outputDir);
-        Collection<CtType<?>> allTypes = launcher.buildModel().getAllTypes();
-        return allTypes.stream().filter(ctType -> ctType.getSimpleName().equals(TestSource.class.getSimpleName())).findFirst().orElse(null);
     }
 }
